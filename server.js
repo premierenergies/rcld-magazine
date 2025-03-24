@@ -1,55 +1,40 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = '<YOUR_CONNECTION_STRING>';  // Replace with your connection string
 
 // Middleware
-app.use(express.json());
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static('public')); // Serve static files from 'public' folder
 
-// Connect to MongoDB
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// MongoDB Connection
+const uri = 'YOUR_MONGODB_ATLAS_CONNECTION_STRING';
+mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB Atlas'))
-    .catch((err) => console.error('MongoDB connection error:', err));
+    .catch(err => console.error('Error connecting to MongoDB:', err));
 
-// Define Schema and Model
-const testSchema = new mongoose.Schema({
+// Schema and Model
+const userSchema = new mongoose.Schema({
     name: String,
     number: String,
-    email: String,
-    address: String
+    email: String
 });
+const User = mongoose.model('test', userSchema);
 
-const Test = mongoose.model('Test', testSchema);
-
-// Insert demo entries
-const demoEntries = [
-    { name: 'John Doe', number: '1234567890', email: 'johndoe@example.com', address: '123 Main St' },
-    { name: 'Jane Doe', number: '0987654321', email: 'janedoe@example.com', address: '456 Maple Ave' }
-];
-
-async function insertDemoEntries() {
+// API Routes
+app.post('/submit', async (req, res) => {
     try {
-        await Test.insertMany(demoEntries);
-        console.log('Demo entries inserted successfully');
-    } catch (err) {
-        console.error('Error inserting demo entries:', err);
-    }
-}
-
-// Endpoint to get all entries
-app.get('/entries', async (req, res) => {
-    try {
-        const entries = await Test.find();
-        res.json(entries);
-    } catch (err) {
-        res.status(500).send('Error fetching entries');
+        const { name, number, email } = req.body;
+        const newUser = new User({ name, number, email });
+        await newUser.save();
+        res.status(201).send('Entry saved successfully!');
+    } catch (error) {
+        res.status(500).send('Error saving entry: ' + error.message);
     }
 });
 
-// Start the server
-app.listen(PORT, async () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-    await insertDemoEntries();
-});
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
